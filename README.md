@@ -1,4 +1,4 @@
-# config-restart
+# configmap-restart
 Use this crd to manage the configmap and restart deployments which mounted the configmap.
 
 ## Description
