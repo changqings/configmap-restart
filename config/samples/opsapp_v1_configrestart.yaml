@@ -1,0 +1,12 @@
+apiVersion: opsapp.someapp.cn/v1
+kind: Configrestart
+metadata:
+  labels:
+    app.kubernetes.io/name: configmap-restart
+    app.kubernetes.io/managed-by: kustomize
+  name: configrestart-sample
+spec:
+  configName: my-config
+  deployments:
+  - nginx-tmp
+  suspend: false

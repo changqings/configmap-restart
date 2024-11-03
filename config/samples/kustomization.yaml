@@ -1,0 +1,4 @@
+## Append samples of your project ##
+resources:
+- opsapp_v1_configrestart.yaml
+# +kubebuilder:scaffold:manifestskustomizesamples
