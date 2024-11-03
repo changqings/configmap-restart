@@ -1,20 +1,20 @@
 # config-restart
-// Use crd to manage the configmap and restart deployments which mounted the configmap.
+Use this crd to manage the configmap and restart deployments which mounted the configmap.
 
 ## Description
 
-//
+### some tips:
 
-## tips:
-
-1. mgr 是控制 controller 的，他的 cache.Option()针对的是要 cache 哪些资源，添加一些过滤解析，比如 ns/labels/annotations 等,其中的 cache.Options 可以使用 DefaultTransform:来剪切掉不需要缓存的资源
-2. controller 中 SetupWithManager()中的 watch()和 predicate()是针对的已经 cached 的资源进行消费时的进一步过滤，其中 watch()是更细粒度的控制，一般使用 builder.WithPredicates()
+1. mgr 用来控制 controller, cache.Option()针对的是要 cache 哪些资源，添加一些过滤解析，比如 
+   ns/labels/annotations 等,其中的 cache.Options 可以使用 DefaultTransform来剪切掉不需要缓存的资源
+2. controller 中 SetupWithManager()中的 watch()和 predicate()是针对的已经 cached 的资源进行消费时
+   的进一步过滤，其中 watch()是更细粒度的控制，一般使用 builder.WithPredicates(),
    即可满足所需要的过滤条件。
 3. 关于 watch(),这三个参数，第一个是资源类型，第二个是事件处理函数，第三个是过滤条件。
-   重点讲一下第二个事件处理函数
-   EnqueueRequestForObject：最简单直接的处理器，适用于大多数情况。
-   EnqueueRequestsFromMapFunc：允许自定义映射函数，适用于需要生成多个请求的情况。
-   EnqueueRequestForOwner：适用于需要根据子资源的变化来更新父资源的情况。
+  - 重点讲一下第二个事件处理函数:
+  - EnqueueRequestForObject：最简单直接的处理器，适用于大多数情况。
+  - EnqueueRequestsFromMapFunc：允许自定义映射函数，适用于需要生成多个请求的情况。
+  - EnqueueRequestForOwner：适用于需要根据子资源的变化来更新父资源的情况。
 
 ```go
 Watch(
@@ -23,6 +23,7 @@ Watch(
             configMapUpdatePredicate(), // 应用自定义谓词
         ).
 ```
+
 ## Getting Started
 
 ### Prerequisites
