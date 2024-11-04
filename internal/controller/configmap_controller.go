@@ -33,6 +33,7 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/event"
 	"sigs.k8s.io/controller-runtime/pkg/log"
 	"sigs.k8s.io/controller-runtime/pkg/predicate"
+	opsappv1 "someapp.cn/configmap-restart/api/v1"
 )
 
 // ConfigMapReconciler reconciles a ConfigMapReconciler object
@@ -64,51 +65,54 @@ func (r *ConfigMapReconciler) Reconcile(ctx context.Context, req ctrl.Request) (
 	}
 
 	// main logic
-
-	configMapNamespaceName := ConfigMapNamespaceName{
-		Namespace: configMap.Namespace,
-		Name:      configMap.Name,
+	configRestartList := &opsappv1.ConfigrestartList{}
+	err = r.List(ctx, configRestartList, &client.ListOptions{
+		Namespace: req.Namespace,
+	})
+	if err != nil {
+		log.Error(err, "failed to list configrestart")
+		return ctrl.Result{Requeue: false}, client.IgnoreNotFound(err)
 	}
 
-	// check this configMap match configRestart
-	configrestartNamespaceName, ok := ShareMapIndex[configMapNamespaceName]
-	if !ok {
-		log.Info("configrestart SharedMapIndex not found, skip", "SharedMapIndex key", configMapNamespaceName)
-		return result, nil
-	}
+	for _, configRestart := range configRestartList.Items {
 
-	configMapData, ok := SharedMap[configrestartNamespaceName]
-	if !ok {
-		log.Info("configrestart SharedMap not found, skip", "SharedMap key", configrestartNamespaceName)
-		return result, nil
-	}
+		suspend := configRestart.Spec.Suspend
+		configName := configRestart.Spec.ConfigName
+		deployments := configRestart.Spec.Deployments
+		ns := configRestart.Namespace
 
-	if configMapData.Suspend {
-		log.Info("configrestart spec.Suspend is true, skip restart", "configrestart", configrestartNamespaceName, "sharedMap", configMapData)
-		return result, nil
-	}
+		go func(deployments []string, configName, namespace string, suspend bool) {
 
-	// restart deployments
-	deployments := configMapData.Deployments
-	configName := configMapData.ConfigName
-	namespace := configMap.Namespace
+			if configName != configMap.Name {
+				log.Info("configName not match, skip restart", "configMapName", configMap.Name)
+				return
+			}
 
-	// if deploymentName is empty, restart all deployments
-	if len(deployments) == 0 {
+			if suspend {
+				log.Info("configrestart is suspended, skip restart", "configName", configName)
+				return
+			}
+			// if deploymentName is empty, restart all deployments
+			if len(deployments) == 0 {
 
-		err := restartDeploymentWithConfigMap(ctx, r.Client, configName, namespace)
-		if err != nil {
-			return result, err
-		}
-		return result, nil
-	}
-
-	// if deployments is not empty, restart deployments
-	for _, deployment := range deployments {
-		err := restartDeployment(ctx, r.Client, deployment, namespace)
-		if err != nil {
-			return result, err
-		}
+				err := restartDeploymentWithConfigMap(ctx, r.Client, configName, namespace)
+				if err != nil {
+					log.Error(err, "restart deployment with configmap failed")
+					return
+				}
+				log.Info("restart deployment with configmap success", "configName", configName)
+				return
+			}
+			// if deployments is not empty, restart deployments
+			for _, deployment := range deployments {
+				err := restartDeployment(ctx, r.Client, deployment, namespace)
+				if err != nil {
+					log.Error(err, "restart deployment failed", "deployment", deployment, "ns", namespace)
+					return
+				}
+				log.Info("restart deployment success", "deployment", deployment, "ns", namespace)
+			}
+		}(deployments, configName, ns, suspend)
 	}
 
 	return ctrl.Result{}, nil
@@ -146,7 +150,6 @@ func checkDeploymentHasConfigMap(configMapName string, deploy *appsv1.Deployment
 			return true
 		}
 	}
-
 	return false
 }
 

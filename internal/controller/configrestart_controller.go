@@ -18,23 +18,14 @@ package controller
 
 import (
 	"context"
-	"sync"
-	"time"
 
 	k8s_errors "k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/runtime"
-	"k8s.io/apimachinery/pkg/types"
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/log"
 
 	opsappv1 "someapp.cn/configmap-restart/api/v1"
-)
-
-var (
-	SharedMap     = make(map[types.NamespacedName]ConfigMapData)
-	ShareMapIndex = make(map[ConfigMapNamespaceName]types.NamespacedName)
-	Mutex         sync.Mutex
 )
 
 type ConfigMapNamespaceName struct {
@@ -72,43 +63,15 @@ func (r *ConfigrestartReconciler) Reconcile(ctx context.Context, req ctrl.Reques
 	if err != nil {
 		if k8s_errors.IsNotFound(err) {
 			// not found, must be delete
-			Mutex.Lock()
-			delete(SharedMap, req.NamespacedName)
-			deleteShareMapIndexKey(ShareMapIndex, req.NamespacedName)
-			Mutex.Unlock()
 			log.Info("deleted configrestart SharedMap and ShareMapIndex", "key", req.NamespacedName)
 			return result, nil
 		}
 		log.Error(err, "failed to get configrestart")
-		return ctrl.Result{RequeueAfter: time.Second * 10}, client.IgnoreNotFound(err)
+		return ctrl.Result{Requeue: false}, client.IgnoreNotFound(err)
 	}
-	//
-	configMapData := ConfigMapData{
-		ConfigName:  configRestart.Spec.ConfigName,
-		Deployments: configRestart.Spec.Deployments,
-		Suspend:     configRestart.Spec.Suspend,
-	}
-	configMapNamespaceName := ConfigMapNamespaceName{
-		Namespace: configRestart.Namespace,
-		Name:      configRestart.Spec.ConfigName,
-	}
-
-	Mutex.Lock()
-	SharedMap[req.NamespacedName] = configMapData
-	ShareMapIndex[configMapNamespaceName] = req.NamespacedName
-	Mutex.Unlock()
-	log.Info("stored configrestart shared map")
+	// we do nothing here, just for caching configRestart
 
 	return ctrl.Result{}, nil
-}
-
-func deleteShareMapIndexKey(mapIndex map[ConfigMapNamespaceName]types.NamespacedName, value types.NamespacedName) {
-	for k, v := range mapIndex {
-		if v == value {
-			delete(ShareMapIndex, k)
-			return
-		}
-	}
 }
 
 // SetupWithManager sets up the controller with the Manager.
