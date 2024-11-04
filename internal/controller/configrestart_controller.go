@@ -28,17 +28,6 @@ import (
 	opsappv1 "someapp.cn/configmap-restart/api/v1"
 )
 
-type ConfigMapNamespaceName struct {
-	Namespace string
-	Name      string
-}
-
-type ConfigMapData struct {
-	ConfigName  string
-	Deployments []string
-	Suspend     bool
-}
-
 // ConfigrestartReconciler reconciles a Configrestart object
 type ConfigrestartReconciler struct {
 	client.Client
