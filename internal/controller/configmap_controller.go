@@ -115,6 +115,7 @@ func (r *ConfigMapReconciler) Reconcile(ctx context.Context, req ctrl.Request) (
 		}(deployments, configName, ns, suspend)
 	}
 
+	log.Info("Reconciling configmap finished")
 	return ctrl.Result{}, nil
 }
 

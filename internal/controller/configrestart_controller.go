@@ -60,6 +60,7 @@ func (r *ConfigrestartReconciler) Reconcile(ctx context.Context, req ctrl.Reques
 	}
 	// we do nothing here, just for caching configRestart
 
+	log.Info("Reconciling configrestart finished")
 	return ctrl.Result{}, nil
 }
 
