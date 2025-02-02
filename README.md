@@ -24,7 +24,8 @@ spec:
 
 1. ctrl.Option 下的 Cache: cache.Option{} 针对的是要 cache 资源，添加过滤条件，可以为
    namepspace/labelSelecter/FieldSelector/transform, 使用 transform 裁掉了 managerdFields, 减少缓存
-2. SutupWithManager 中的 For() 用来选择 controller 要监听的对象，这里要监听两个对象，configmap 和 configrestart(此 crd 定义的对象)
+2. SutupWithManager 中的 For() 用来选择 controller 要监听的对象，这里要监听两个对象, configmap 和 configrestart(此 crd 定义的对象)
+   所以创建了两个 controller
 3. SetupWithManager()中的 watch() 是在 ctrl.NewManager() 后的配置的更进一步配置，
    其中 watch() 方法等同于 WatchRawSource(),
 
