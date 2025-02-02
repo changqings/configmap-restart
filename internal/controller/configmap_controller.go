@@ -76,47 +76,55 @@ func (r *ConfigMapReconciler) Reconcile(ctx context.Context, req ctrl.Request) (
 
 	for _, configRestart := range configRestartList.Items {
 
-		suspend := configRestart.Spec.Suspend
-		configName := configRestart.Spec.ConfigName
-		deployments := configRestart.Spec.Deployments
-		ns := configRestart.Namespace
+		go func(configRestart *opsappv1.Configrestart) {
+			// go func(deployments []string, configName, namespace string, suspend bool) {
+			suspend := configRestart.Spec.Suspend
+			configMapName := configRestart.Spec.ConfigName
+			deploymentNames := configRestart.Spec.Deployments
+			ns := configRestart.Namespace
 
-		go func(deployments []string, configName, namespace string, suspend bool) {
-
-			if configName != configMap.Name {
+			if configMapName != configMap.Name {
 				log.Info("configName not match, skip restart", "configMapName", configMap.Name)
 				return
 			}
 
 			if suspend {
-				log.Info("configrestart is suspended, skip restart", "configName", configName)
+				log.Info("configrestart is suspended, skip restart", "configName", configMapName)
 				return
 			}
 			// if deploymentName is empty, restart all deployments
-			if len(deployments) == 0 {
+			if len(deploymentNames) == 0 {
 
-				err := restartDeploymentWithConfigMap(ctx, r.Client, configName, namespace)
+				err := restartDeploymentWithConfigMap(ctx, r.Client, configMapName, ns)
 				if err != nil {
 					log.Error(err, "restart deployment with configmap failed")
 					return
 				}
-				log.Info("restart deployment with configmap success", "configName", configName)
+				log.Info("restart deployment with configmap success", "configName", configMapName)
 				return
 			}
 			// if deployments is not empty, restart deployments
-			for _, deployment := range deployments {
-				err := restartDeployment(ctx, r.Client, deployment, namespace)
+			for _, deploymentName := range deploymentNames {
+				err := restartDeployment(ctx, r.Client, deploymentName, ns)
 				if err != nil {
-					log.Error(err, "restart deployment failed", "deployment", deployment, "ns", namespace)
+					log.Error(err, "restart deployment failed", "deployment", deploymentName, "ns", ns)
 					return
 				}
-				log.Info("restart deployment success", "deployment", deployment, "ns", namespace)
+				log.Info("restart deployment success", "deployment", deploymentName, "ns", ns)
 			}
-		}(deployments, configName, ns, suspend)
+		}(&configRestart)
 	}
 
 	log.Info("Reconciling configmap finished")
 	return ctrl.Result{}, nil
+}
+
+// SetupWithManager sets up the controller with the Manager.
+func (r *ConfigMapReconciler) SetupWithManager(mgr ctrl.Manager) error {
+
+	return ctrl.NewControllerManagedBy(mgr).
+		For(&corev1.ConfigMap{}, builder.WithPredicates(configMapUpdatePredicate())).
+		Complete(r)
 }
 
 func restartDeployment(ctx context.Context, c client.Client, deploymentName, ns string) error {
@@ -172,14 +180,6 @@ func restartDeploymentWithConfigMap(ctx context.Context, c client.Client, config
 	}
 
 	return nil
-}
-
-// SetupWithManager sets up the controller with the Manager.
-func (r *ConfigMapReconciler) SetupWithManager(mgr ctrl.Manager) error {
-
-	return ctrl.NewControllerManagedBy(mgr).
-		For(&corev1.ConfigMap{}, builder.WithPredicates(configMapUpdatePredicate())).
-		Complete(r)
 }
 
 func configMapUpdatePredicate() predicate.Funcs {

@@ -1,6 +1,8 @@
-# configmap-restart
+# configmap-restart main logical
 
-Watch configmap data update and restart releated deployments which mounted the configmap
+- opsappv1.Configrestart{} define the configMap to watch and deployemnts to restart
+- watch configMap data update, then get the same namespace opsappv1.ConfigrestartList{}
+  and restart deployment
 
 ```yaml
 # example cr
