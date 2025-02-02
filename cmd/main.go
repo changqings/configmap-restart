@@ -142,7 +142,7 @@ func main() {
 		// after the manager stops then its usage might be unsafe.
 		// LeaderElectionReleaseOnCancel: true,
 		Cache: cache.Options{
-			DefaultTransform: defaultTransform,
+			DefaultTransform: removeManagedFieldTransform,
 		},
 	})
 	if err != nil {
@@ -181,7 +181,7 @@ func main() {
 		os.Exit(1)
 	}
 }
-func defaultTransform(obj any) (any, error) {
+func removeManagedFieldTransform(obj any) (any, error) {
 
 	result, ok := obj.(metav1.Object)
 	if !ok {
